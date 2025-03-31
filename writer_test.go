@@ -1,6 +1,7 @@
 package excel
 
 import (
+	"fmt"
 	"log"
 	"reflect"
 	"testing"
@@ -402,6 +403,7 @@ func TestMapStringInterfaceWrite(t *testing.T) {
 // - Respecting field tags
 // - Converting complex types (dates, arrays)
 // - Excluding ignored fields
+// - Non-exported fields are not written
 func TestStructNamedUserWrite(t *testing.T) {
 	// Create Excel file for testing
 	outFile := excelize.NewFile()
@@ -419,6 +421,7 @@ func TestStructNamedUserWrite(t *testing.T) {
 			EncodedName: Encoded{Name: "encoded name"},
 			Created:     createdDate,
 			AnArray:     []int{1, 2, 3},
+			internalID:  42, // This should not appear in Excel
 		},
 	}
 
@@ -440,12 +443,14 @@ func TestStructNamedUserWrite(t *testing.T) {
 	headerC1, _ := outFile.GetCellValue(outFile.GetSheetName(outFile.GetActiveSheetIndex()), "C1")
 	headerD1, _ := outFile.GetCellValue(outFile.GetSheetName(outFile.GetActiveSheetIndex()), "D1")
 	headerE1, _ := outFile.GetCellValue(outFile.GetSheetName(outFile.GetActiveSheetIndex()), "E1")
+	headerF1, _ := outFile.GetCellValue(outFile.GetSheetName(outFile.GetActiveSheetIndex()), "F1")
 
 	assert.Equal(t, "Id", headerA1, "Header A1 should be 'Id'")
 	assert.Equal(t, "Name", headerB1, "Header B1 should be 'Name'")
 	assert.Equal(t, "Encoded_Name", headerC1, "Header C1 should be 'Encoded_Name'")
 	assert.Equal(t, "created", headerD1, "Header D1 should be 'created'")
 	assert.Equal(t, "array", headerE1, "Header E1 should be 'array'")
+	assert.Equal(t, "", headerF1, "Header F1 should be empty (no internalID)")
 
 	// Check values
 	valueA2, _ := outFile.GetCellValue(outFile.GetSheetName(outFile.GetActiveSheetIndex()), "A2")
@@ -453,12 +458,14 @@ func TestStructNamedUserWrite(t *testing.T) {
 	valueC2, _ := outFile.GetCellValue(outFile.GetSheetName(outFile.GetActiveSheetIndex()), "C2")
 	valueD2, _ := outFile.GetCellValue(outFile.GetSheetName(outFile.GetActiveSheetIndex()), "D2")
 	valueE2, _ := outFile.GetCellValue(outFile.GetSheetName(outFile.GetActiveSheetIndex()), "E2")
+	valueF2, _ := outFile.GetCellValue(outFile.GetSheetName(outFile.GetActiveSheetIndex()), "F2")
 
 	assert.Equal(t, "1", valueA2, "Value A2 should be '1'")
 	assert.Equal(t, "Test User", valueB2, "Value B2 should be 'Test User'")
 	assert.Equal(t, "{\"name\":\"encoded name\"}", valueC2, "Value C2 should be '{\"name\":\"encoded name\"}'")
 	assert.Equal(t, "01/01/2023", valueD2, "Value D2 should be '01/01/2023'")
 	assert.Equal(t, "1|2|3", valueE2, "Value E2 should be '1|2|3'")
+	assert.Equal(t, "", valueF2, "Value F2 should be empty (no internalID)")
 }
 
 // TestStructNamedUserReadWrite verifies writing and then reading a NamedUser structure.
@@ -467,6 +474,7 @@ func TestStructNamedUserWrite(t *testing.T) {
 // - File persistence
 // - Data deserialization
 // - Exact data matching before/after
+// - Non-exported fields are preserved but not written to Excel
 func TestStructNamedUserReadWrite(t *testing.T) {
 	// Create Excel file for write testing
 	outFile := excelize.NewFile()
@@ -483,6 +491,7 @@ func TestStructNamedUserReadWrite(t *testing.T) {
 			EncodedName: Encoded{Name: "encoded name"},
 			Created:     createdDate,
 			AnArray:     []int{1, 2, 3},
+			internalID:  42, // This should not be written to Excel
 		},
 	}
 
@@ -526,5 +535,99 @@ func TestStructNamedUserReadWrite(t *testing.T) {
 	assert.Equal(t, len(originalUsers[0].AnArray), len(readUsers[0].AnArray), "Arrays should have the same length")
 	for i := 0; i < len(originalUsers[0].AnArray); i++ {
 		assert.Equal(t, originalUsers[0].AnArray[i], readUsers[0].AnArray[i], "Array elements should match")
+	}
+	assert.Equal(t, 0, readUsers[0].internalID, "internalID should be zero value after reading")
+}
+
+// TestStructNamedUserWriteBulk verifies writing multiple NamedUser structures to an Excel file.
+// It tests:
+// - Bulk data writing
+// - Structure field mapping for multiple records
+// - Complex type handling across multiple rows
+// - Performance with larger datasets
+// - Non-exported fields are not written
+func TestStructNamedUserWriteBulk(t *testing.T) {
+	// Create Excel file for testing
+	outFile := excelize.NewFile()
+	defer func() { _ = outFile.Close() }()
+
+	// Create test data with 10 users
+	namedUsers := make([]NamedUser, 10)
+	baseDate, _ := time.Parse("02/01/2006", "01/01/2023")
+
+	for i := 0; i < 10; i++ {
+		namedUsers[i] = NamedUser{
+			Named: Named{
+				ID:   i + 1,
+				Name: fmt.Sprintf("Test User %d", i+1),
+			},
+			Ignored:     "This should be ignored",
+			EncodedName: Encoded{Name: fmt.Sprintf("encoded name %d", i+1)},
+			Created:     baseDate.AddDate(0, i, 0), // Increment by one month for each user
+			AnArray:     []int{i + 1, i + 2, i + 3},
+			internalID:  i + 100, // This should not appear in Excel
+		}
+	}
+
+	// Configure Excel writer
+	outExcel, _ := NewWriter(outFile)
+	outExcel.SetSheet(outExcel.GetActiveSheet())
+	outExcel.SetAxis("A1")
+
+	// Serialize data
+	err := outExcel.Marshal(&namedUsers)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	// Verify headers
+	headerA1, _ := outFile.GetCellValue(outFile.GetSheetName(outFile.GetActiveSheetIndex()), "A1")
+	headerB1, _ := outFile.GetCellValue(outFile.GetSheetName(outFile.GetActiveSheetIndex()), "B1")
+	headerC1, _ := outFile.GetCellValue(outFile.GetSheetName(outFile.GetActiveSheetIndex()), "C1")
+	headerD1, _ := outFile.GetCellValue(outFile.GetSheetName(outFile.GetActiveSheetIndex()), "D1")
+	headerE1, _ := outFile.GetCellValue(outFile.GetSheetName(outFile.GetActiveSheetIndex()), "E1")
+	headerF1, _ := outFile.GetCellValue(outFile.GetSheetName(outFile.GetActiveSheetIndex()), "F1")
+
+	assert.Equal(t, "Id", headerA1, "Header A1 should be 'Id'")
+	assert.Equal(t, "Name", headerB1, "Header B1 should be 'Name'")
+	assert.Equal(t, "Encoded_Name", headerC1, "Header C1 should be 'Encoded_Name'")
+	assert.Equal(t, "created", headerD1, "Header D1 should be 'created'")
+	assert.Equal(t, "array", headerE1, "Header E1 should be 'array'")
+	assert.Equal(t, "", headerF1, "Header F1 should be empty (no internalID)")
+
+	// Verify first row values
+	valueA2, _ := outFile.GetCellValue(outFile.GetSheetName(outFile.GetActiveSheetIndex()), "A2")
+	valueB2, _ := outFile.GetCellValue(outFile.GetSheetName(outFile.GetActiveSheetIndex()), "B2")
+	valueC2, _ := outFile.GetCellValue(outFile.GetSheetName(outFile.GetActiveSheetIndex()), "C2")
+	valueD2, _ := outFile.GetCellValue(outFile.GetSheetName(outFile.GetActiveSheetIndex()), "D2")
+	valueE2, _ := outFile.GetCellValue(outFile.GetSheetName(outFile.GetActiveSheetIndex()), "E2")
+	valueF2, _ := outFile.GetCellValue(outFile.GetSheetName(outFile.GetActiveSheetIndex()), "F2")
+
+	assert.Equal(t, "1", valueA2, "Value A2 should be '1'")
+	assert.Equal(t, "Test User 1", valueB2, "Value B2 should be 'Test User 1'")
+	assert.Equal(t, "{\"name\":\"encoded name 1\"}", valueC2, "Value C2 should be '{\"name\":\"encoded name 1\"}'")
+	assert.Equal(t, "01/01/2023", valueD2, "Value D2 should be '01/01/2023'")
+	assert.Equal(t, "1|2|3", valueE2, "Value E2 should be '1|2|3'")
+	assert.Equal(t, "", valueF2, "Value F2 should be empty (no internalID)")
+
+	// Verify last row values
+	valueA11, _ := outFile.GetCellValue(outFile.GetSheetName(outFile.GetActiveSheetIndex()), "A11")
+	valueB11, _ := outFile.GetCellValue(outFile.GetSheetName(outFile.GetActiveSheetIndex()), "B11")
+	valueC11, _ := outFile.GetCellValue(outFile.GetSheetName(outFile.GetActiveSheetIndex()), "C11")
+	valueD11, _ := outFile.GetCellValue(outFile.GetSheetName(outFile.GetActiveSheetIndex()), "D11")
+	valueE11, _ := outFile.GetCellValue(outFile.GetSheetName(outFile.GetActiveSheetIndex()), "E11")
+	valueF11, _ := outFile.GetCellValue(outFile.GetSheetName(outFile.GetActiveSheetIndex()), "F11")
+
+	assert.Equal(t, "10", valueA11, "Value A11 should be '10'")
+	assert.Equal(t, "Test User 10", valueB11, "Value B11 should be 'Test User 10'")
+	assert.Equal(t, "{\"name\":\"encoded name 10\"}", valueC11, "Value C11 should be '{\"name\":\"encoded name 10\"}'")
+	assert.Equal(t, "01/10/2023", valueD11, "Value D11 should be '01/10/2023'")
+	assert.Equal(t, "10|11|12", valueE11, "Value E11 should be '10|11|12'")
+	assert.Equal(t, "", valueF11, "Value F11 should be empty (no internalID)")
+
+	// Save the file for manual inspection if needed
+	if err := outFile.SaveAs("employees_bulk.gen.xlsx"); err != nil {
+		t.Errorf("Failed to save Excel file: %v", err)
 	}
 }

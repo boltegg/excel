@@ -79,6 +79,11 @@ func collectFields(s *Struct, t reflect.Type, startIndex int, fields Fields, def
 	for i := 0; i < fieldsCount; i++ {
 		f := t.Field(i)
 
+		// Skip unexported fields
+		if !f.IsExported() {
+			continue
+		}
+
 		// If it's an embedded structure (Anonymous), process its fields
 		if f.Anonymous {
 			fieldType := f.Type

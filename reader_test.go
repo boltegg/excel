@@ -41,12 +41,14 @@ type User struct {
 // - EncodedName: JSON encoded/decoded name field
 // - Created: formatted date field
 // - AnArray: array split by | delimiter
+// - internalID: non-exported field that should not appear in Excel
 type NamedUser struct {
 	Named
 	Ignored     string    `excel:"-"`
 	EncodedName Encoded   `excel:"Encoded_Name,encoding:json"`
 	Created     time.Time `excel:"created,format:d/m/Y"`
 	AnArray     []int     `excel:"array,split:|"`
+	internalID  int       // This field should not be exported to Excel
 }
 
 // users represents a slice of User structs used for testing

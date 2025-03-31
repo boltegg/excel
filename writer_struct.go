@@ -248,6 +248,11 @@ func (w *StructWriter) writeRows(slice any) (row int, err error) {
 				return 0, fmt.Errorf("excel: failed to find field at index %d: %w", f.Index, err)
 			}
 
+			// Skip unexported fields
+			if !fieldValue.CanInterface() {
+				continue
+			}
+
 			if fieldValue.Kind() == reflect.Pointer && fieldValue.IsNil() {
 				continue
 			}
