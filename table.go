@@ -117,10 +117,10 @@ func (e *Excel) DeleteTableContent(name string) error {
 	return table.DeleteContent()
 }
 
-// ResizeTable resize the table by changing the range
-func (e *Excel) ResizeTable(table *Table, newRange string) error {
-	return table.Resize(newRange)
-}
+//// ResizeTable resize the table by changing the range
+//func (e *Excel) ResizeTable(table *Table, newRange string) error {
+//	return table.Resize(newRange)
+//}
 
 // IsValidError returns an error if the table is not valid
 func (t *Table) IsValidError() error {
@@ -156,49 +156,49 @@ func (t *Table) Delete() error {
 	return t.Sheet.file.DeleteTable(t.Name)
 }
 
-// Resize the table by changing the range
-func (t *Table) Resize(newRange string) error {
-	if err := t.IsValidError(); err != nil {
-		return err
-	}
-	if newRange == "" {
-		return ErrTableRange
-	}
-
-	// Resize the table
-	if err := t.Sheet.file.ResizeTable(t.Name, newRange); err != nil {
-		return err
-	}
-
-	// Update the range
-	t.Range = newRange
-
-	// Loop through all cells in the table
-	tr, err := ToRange(t.Range)
-	if err != nil {
-		return err
-	}
-
-	dv, _ := t.Sheet.file.GetDataValidations(t.Sheet.Name)
-	_ = dv
-
-	for col := tr.StartColumn; col <= tr.EndColumn; col++ {
-		firstCoord, _ := excelize.CoordinatesToCellName(col, tr.StartRow+1)
-		// Comments
-		comment := t.Sheet.GetComment(firstCoord)
-
-		for row := tr.StartRow + 2; row <= tr.EndRow; row++ {
-			curCoord, _ := excelize.CoordinatesToCellName(col, row)
-			// Comments
-			if comment != nil {
-				comment.Cell = curCoord
-				_ = t.Sheet.file.AddComment(t.Sheet.Name, *comment)
-			}
-		}
-	}
-
-	return nil
-}
+//// Resize the table by changing the range
+//func (t *Table) Resize(newRange string) error {
+//	if err := t.IsValidError(); err != nil {
+//		return err
+//	}
+//	if newRange == "" {
+//		return ErrTableRange
+//	}
+//
+//	// Resize the table
+//	if err := t.Sheet.file.ResizeTable(t.Name, newRange); err != nil {
+//		return err
+//	}
+//
+//	// Update the range
+//	t.Range = newRange
+//
+//	// Loop through all cells in the table
+//	tr, err := ToRange(t.Range)
+//	if err != nil {
+//		return err
+//	}
+//
+//	dv, _ := t.Sheet.file.GetDataValidations(t.Sheet.Name)
+//	_ = dv
+//
+//	for col := tr.StartColumn; col <= tr.EndColumn; col++ {
+//		firstCoord, _ := excelize.CoordinatesToCellName(col, tr.StartRow+1)
+//		// Comments
+//		comment := t.Sheet.GetComment(firstCoord)
+//
+//		for row := tr.StartRow + 2; row <= tr.EndRow; row++ {
+//			curCoord, _ := excelize.CoordinatesToCellName(col, row)
+//			// Comments
+//			if comment != nil {
+//				comment.Cell = curCoord
+//				_ = t.Sheet.file.AddComment(t.Sheet.Name, *comment)
+//			}
+//		}
+//	}
+//
+//	return nil
+//}
 
 // DeleteContent deletes the content of the table
 func (t *Table) DeleteContent() error {
