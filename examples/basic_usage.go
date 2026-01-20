@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/go-mods/excel"
+	"github.com/boltegg/excel"
 	"github.com/xuri/excelize/v2"
 )
 

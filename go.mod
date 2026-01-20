@@ -1,4 +1,4 @@
-module github.com/go-mods/excel
+module github.com/boltegg/excel
 
 go 1.24.0
 

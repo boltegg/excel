@@ -9,7 +9,7 @@ Marshal and Unmarshal Excel file with the help of [excelize](https://github.com/
 ## Installation
 
 ```shell
-go get github.com/go-mods/excel
+go get github.com/boltegg/excel
 ```
 
 ## Usage
@@ -64,7 +64,7 @@ type EncodedName struct {
 package main
 
 import (
-    "github.com/go-mods/excel"
+    "github.com/boltegg/excel"
     "github.com/xuri/excelize/v2"
 )
 
@@ -96,7 +96,7 @@ func main() {
 package main
 
 import (
-    "github.com/go-mods/excel"
+    "github.com/boltegg/excel"
     "github.com/xuri/excelize/v2"
 )
 
